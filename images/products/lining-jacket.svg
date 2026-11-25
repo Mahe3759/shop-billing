@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
+  <rect width="200" height="200" fill="#f8fafc" rx="12"/>
+  <!-- Jacket shape -->
+  <path d="M60 45 L85 45 L100 80 L115 45 L140 45 L160 85 L145 92 L135 75 L135 155 L65 155 L65 75 L55 92 L40 85 Z" fill="#3b82f6" opacity="0.15" stroke="#2563eb" stroke-width="2.5" stroke-linejoin="round"/>
+  <!-- Lapels -->
+  <path d="M85 45 L100 95 L65 155" fill="none" stroke="#1d4ed8" stroke-width="2"/>
+  <path d="M115 45 L100 95 L135 155" fill="none" stroke="#1d4ed8" stroke-width="2"/>
+  <!-- Collar -->
+  <path d="M85 45 Q100 55 115 45" fill="none" stroke="#1d4ed8" stroke-width="2"/>
+  <!-- Buttons -->
+  <circle cx="100" cy="110" r="3.5" fill="#1e3a8a"/>
+  <circle cx="100" cy="125" r="3.5" fill="#1e3a8a"/>
+  <circle cx="100" cy="140" r="3.5" fill="#1e3a8a"/>
+  <!-- Pocket square / tailoring pocket -->
+  <line x1="75" y1="110" x2="90" y2="110" stroke="#1e40af" stroke-width="2"/>
+  <polygon points="80,110 83,103 86,110" fill="#60a5fa"/>
+  <text x="100" y="32" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="600" fill="#475569" text-anchor="middle">LINING JACKET</text>
+</svg>

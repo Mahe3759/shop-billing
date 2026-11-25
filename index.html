@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Simple, lightweight and professional menu-based billing system for clothing and tailoring shops.">
+  <title>Shop Billing System | Tailor & Clothing</title>
+  <link rel="stylesheet" href="css/style.css">
+  <!-- Favicon using tailoring icon -->
+  <link rel="icon" type="image/svg+xml" href="images/products/default.svg">
+</head>
+<body>
+
+  <div class="app-container">
+
+    <!-- App Header & Shop Brand -->
+    <header class="app-header">
+      <div class="brand-section">
+        <div class="brand-icon" aria-hidden="true">✂</div>
+        <div class="brand-info">
+          <h1 id="shop-brand-name">Shree Fashion &amp; Tailors</h1>
+          <p id="shop-brand-tagline">Custom Tailoring &amp; Clothing Material</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-open-settings" title="Edit Shop Name and Details">
+          ⚙ Shop Settings
+        </button>
+      </div>
+    </header>
+
+    <!-- 1. AVAILABLE MENU SECTION (FIRST SECTION SEEN BY USERS) -->
+    <section class="section-card" id="menu-section" aria-labelledby="menu-title">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <h2 class="section-title" id="menu-title">
+            Available Menu
+          </h2>
+          <span class="badge-counter" id="menu-count-badge">5 Items</span>
+        </div>
+        <div>
+          <!-- Mandatory prominent Add New Menu button with plus icon -->
+          <button type="button" class="btn btn-primary" id="btn-add-new-menu" title="Add a new product (Hotkey: F2)">
+            <span class="icon">+</span> Add New Menu
+          </button>
+        </div>
+      </div>
+
+      <p class="section-subtitle" style="margin-bottom: 16px;">
+        Browse items or click any product card to immediately add it to your current bill.
+      </p>
+
+      <!-- Products Grid -->
+      <div class="menu-grid" id="menu-grid" role="region" aria-label="Product Catalog">
+        <!-- Rendered dynamically by js/products.js -->
+      </div>
+    </section>
+
+    <!-- 2. BILLING SECTION (LOCATED DIRECTLY BELOW THE MENU) -->
+    <section class="section-card" id="billing-section" aria-labelledby="billing-title">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <h2 class="section-title" id="billing-title">
+            Billing Counter
+          </h2>
+        </div>
+        <div>
+          <button type="button" class="btn btn-outline-danger btn-sm" id="btn-reset-bill" title="Clear current bill and reset all totals to zero">
+            ↺ Reset Bill to Zero
+          </button>
+        </div>
+      </div>
+
+      <!-- Product Number & Quantity Inputs -->
+      <div class="billing-input-bar">
+        <div class="billing-form-row">
+          <div class="input-group input-group-id">
+            <label for="bill-product-id">Product Number (#):</label>
+            <input 
+              type="number" 
+              id="bill-product-id" 
+              class="input-control" 
+              placeholder="e.g. 101 (or click from menu above)" 
+              autocomplete="off"
+              min="1"
+            >
+            <div class="lookup-hint" id="product-lookup-hint">
+              <span class="hint-muted">Type Product # (or click from Menu)</span>
+            </div>
+          </div>
+
+          <div class="input-group input-group-qty">
+            <label for="bill-product-qty">Quantity:</label>
+            <input 
+              type="number" 
+              id="bill-product-qty" 
+              class="input-control" 
+              value="1" 
+              min="1" 
+              max="999"
+            >
+            <div class="lookup-hint">
+              <span class="hint-muted">&nbsp;</span>
+            </div>
+          </div>
+
+          <div class="billing-btn-group">
+            <button type="button" class="btn btn-primary" id="btn-add-to-bill">
+              <span class="icon">+</span> Add to Bill
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Selected Products Table -->
+      <div class="bill-empty-state" id="bill-empty-state">
+        <p>No products in the bill yet.</p>
+        <p class="hint-muted" style="font-size: 0.85rem; margin-top: 4px;">
+          Enter a product number above or click any product from the menu to start billing.
+        </p>
+      </div>
+
+      <div class="bill-table-wrapper" id="bill-table-wrapper" style="display: none;">
+        <table class="bill-table" id="bill-table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th style="width: 140px;">Quantity</th>
+              <th style="width: 120px;">Price</th>
+              <th style="width: 140px;">Subtotal</th>
+              <th style="width: 50px; text-align: center;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="bill-table-body">
+            <!-- Rows rendered dynamically by js/billing.js -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Bill Footer & Grand Total Calculation -->
+      <div class="bill-summary-bar">
+        <div class="summary-left">
+          <span class="summary-label">Grand Total</span>
+          <span class="grand-total-value" id="bill-grand-total">₹0.00</span>
+          <span class="summary-count" id="bill-items-count">0 items</span>
+        </div>
+
+        <div class="summary-actions">
+          <button type="button" class="btn btn-success btn-lg" id="btn-generate-bill" disabled>
+            📄 Generate Bill &amp; Print
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Persistence & Backup Utilities -->
+    <footer class="footer-utility-bar">
+      <div class="disclaimer-text">
+        <span>🔒 <strong>Local Offline Storage:</strong> Your product menu and price lists are stored securely in this browser/device and survive page refresh.</span>
+      </div>
+      <div class="utility-buttons">
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-export-backup" title="Download a JSON backup of products and settings">
+          ⬇ Export Backup (JSON)
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-import-backup" title="Restore products and settings from a JSON backup">
+          ⬆ Restore Backup (JSON)
+        </button>
+        <input type="file" id="import-file-input" accept=".json,application/json" style="display: none;">
+      </div>
+    </footer>
+
+  </div> <!-- /app-container -->
+
+  <!-- =========================================================================
+       MODAL: ADD / EDIT PRODUCT MENU ITEM
+       ========================================================================= -->
+  <div class="modal-backdrop" id="product-modal" role="dialog" aria-modal="true" aria-labelledby="product-modal-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="product-modal-title">Add New Menu Item</h3>
+        <button type="button" class="btn-close-modal" id="modal-cancel-btn" aria-label="Close">&times;</button>
+      </div>
+      <form id="product-form">
+        <div class="modal-body">
+          <div class="input-group">
+            <label for="prod-name">Product Name *</label>
+            <input type="text" id="prod-name" class="input-control" placeholder="e.g. Silk Saree False, Cotton Lining" required>
+          </div>
+
+          <div class="input-group">
+            <label for="prod-price">Unit Price (₹) *</label>
+            <input type="number" id="prod-price" class="input-control" placeholder="0.00" min="0" step="0.50" required>
+          </div>
+
+          <div class="input-group">
+            <label for="prod-image-file">Product Picture (Optional)</label>
+            <div class="image-upload-preview-wrap">
+              <div class="image-preview-box">
+                <img id="modal-image-preview" src="images/products/default.svg" alt="Preview">
+              </div>
+              <div style="flex: 1;">
+                <input type="file" id="prod-image-file" class="input-control" accept="image/*" style="font-size: 0.8rem; padding: 6px;">
+                <p class="hint-muted" style="font-size: 0.75rem; margin-top: 4px;">PNG, JPG, WebP or SVG. Auto-optimized.</p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <span class="hint-muted" id="next-id-hint" style="font-size: 0.8rem;">Auto-assigned ID</span>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="ProductManager.closeModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-product">Save Product</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL: BILL RECEIPT GENERATION & PRINT / SCREENSHOT
+       ========================================================================= -->
+  <div class="modal-backdrop" id="receipt-modal" role="dialog" aria-modal="true" aria-labelledby="receipt-modal-title">
+    <div class="modal-card receipt-modal-card">
+      <div class="modal-header">
+        <h3 id="receipt-modal-title">Generated Bill Receipt</h3>
+        <button type="button" class="btn-close-modal" id="btn-receipt-close" aria-label="Close">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="receipt-scroll-area">
+          <div class="receipt-paper" id="receipt-printable-area">
+            <!-- Receipt content generated dynamically by js/billing.js -->
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="flex-wrap: wrap; justify-content: space-between;">
+        <button type="button" class="btn btn-outline-danger btn-sm" id="btn-receipt-new" title="Clear current bill and reset to zero for the next customer">
+          ↺ New Order (Reset to Zero)
+        </button>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-receipt-screenshot" title="Download a clean PNG screenshot of the receipt">
+            📸 Save Screenshot (PNG)
+          </button>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-receipt-print" title="Print receipt via browser dialog">
+            🖨 Print Bill
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL: SHOP SETTINGS
+       ========================================================================= -->
+  <div class="modal-backdrop" id="settings-modal" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Shop &amp; Billing Settings</h3>
+        <button type="button" class="btn-close-modal" id="settings-cancel-btn" aria-label="Close">&times;</button>
+      </div>
+      <form id="settings-form">
+        <div class="modal-body">
+          <div class="input-group">
+            <label for="setting-shop-name">Shop Name</label>
+            <input type="text" id="setting-shop-name" class="input-control" required>
+          </div>
+
+          <div class="input-group">
+            <label for="setting-shop-tagline">Tagline / Subtitle</label>
+            <input type="text" id="setting-shop-tagline" class="input-control">
+          </div>
+
+          <div class="input-group">
+            <label for="setting-shop-address">Shop Address</label>
+            <input type="text" id="setting-shop-address" class="input-control">
+          </div>
+
+          <div class="input-group">
+            <label for="setting-shop-phone">Contact / Phone Number</label>
+            <input type="text" id="setting-shop-phone" class="input-control">
+          </div>
+
+          <div class="input-group">
+            <label for="setting-currency">Currency Symbol</label>
+            <input type="text" id="setting-currency" class="input-control" style="width: 80px;" maxlength="4" value="₹">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="App.closeSettingsModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Settings</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Core JavaScript Modules (Vanilla JS, No External Dependencies) -->
+  <script src="js/storage.js"></script>
+  <script src="js/products.js"></script>
+  <script src="js/billing.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>

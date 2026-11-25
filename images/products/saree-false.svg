@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
+  <rect width="200" height="200" fill="#f8fafc" rx="12"/>
+  <!-- Saree Fall Ribbon / Roll -->
+  <path d="M40 70 C 70 40, 130 40, 160 70 C 175 85, 175 115, 160 130 C 130 160, 70 160, 40 130 C 25 115, 25 85, 40 70 Z" fill="#ec4899" opacity="0.12" stroke="#db2777" stroke-width="2"/>
+  <!-- Fall roll coils -->
+  <circle cx="100" cy="100" r="45" fill="none" stroke="#db2777" stroke-width="2.5"/>
+  <circle cx="100" cy="100" r="32" fill="none" stroke="#f472b6" stroke-width="2" stroke-dasharray="6,4"/>
+  <circle cx="100" cy="100" r="18" fill="#fbcfe8" stroke="#db2777" stroke-width="2"/>
+  <circle cx="100" cy="100" r="6" fill="#be185d"/>
+  <!-- Extended ribbon tail -->
+  <path d="M130 130 Q155 150 170 145 Q180 140 180 155" fill="none" stroke="#db2777" stroke-width="3" stroke-linecap="round"/>
+  <!-- Stitching markers on fall strip -->
+  <line x1="140" y1="125" x2="148" y2="135" stroke="#9d174d" stroke-width="1.5"/>
+  <line x1="150" y1="135" x2="158" y2="145" stroke="#9d174d" stroke-width="1.5"/>
+  <!-- Tailoring Needle & thread -->
+  <line x1="30" y1="50" x2="65" y2="75" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="32" cy="52" r="1.5" fill="#f8fafc"/>
+  <path d="M30 50 Q20 40 25 28 Q30 18 45 25" fill="none" stroke="#db2777" stroke-width="1.5" stroke-dasharray="3,3"/>
+  <text x="100" y="32" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="600" fill="#475569" text-anchor="middle">SAREE FALSE (FALL)</text>
+</svg>

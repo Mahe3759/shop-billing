@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
+  <rect width="200" height="200" fill="#f8fafc" rx="12"/>
+  <rect x="25" y="45" width="150" height="110" rx="10" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="2"/>
+  <!-- Fabric roll folds -->
+  <path d="M35 55 L165 55 A10 10 0 0 1 175 65 L175 135 A10 10 0 0 1 165 145 L35 145 A10 10 0 0 1 25 135 L25 65 A10 10 0 0 1 35 55 Z" fill="#3b82f6" opacity="0.12"/>
+  <ellipse cx="45" cy="100" rx="15" ry="35" fill="#2563eb" opacity="0.25" stroke="#1d4ed8" stroke-width="2"/>
+  <ellipse cx="45" cy="100" rx="6" ry="16" fill="#1e40af"/>
+  <path d="M45 65 L160 65 Q175 65 175 100 Q175 135 160 135 L45 135" fill="none" stroke="#2563eb" stroke-width="3"/>
+  <path d="M80 65 L80 135 M115 65 L115 135 M150 65 L150 135" stroke="#93c5fd" stroke-width="2" stroke-dasharray="4,4"/>
+  <!-- Measuring tape touch -->
+  <rect x="30" y="148" width="140" height="14" rx="3" fill="#fef08a" stroke="#eab308" stroke-width="1.5"/>
+  <line x1="50" y1="148" x2="50" y2="155" stroke="#854d0e" stroke-width="1.5"/>
+  <line x1="70" y1="148" x2="70" y2="158" stroke="#854d0e" stroke-width="2"/>
+  <line x1="90" y1="148" x2="90" y2="155" stroke="#854d0e" stroke-width="1.5"/>
+  <line x1="110" y1="148" x2="110" y2="158" stroke="#854d0e" stroke-width="2"/>
+  <line x1="130" y1="148" x2="130" y2="155" stroke="#854d0e" stroke-width="1.5"/>
+  <line x1="150" y1="148" x2="150" y2="158" stroke="#854d0e" stroke-width="2"/>
+  <text x="100" y="32" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="600" fill="#475569" text-anchor="middle">LINING CLOTH</text>
+</svg>
