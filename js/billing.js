@@ -14,11 +14,70 @@
 (function (window) {
   'use strict';
 
+  // Bilingual Dictionaries (English & Telugu)
+  const I18N = {
+    en: {
+      langCode: 'en',
+      langName: 'English',
+      receiptTitle: 'Bill Receipt',
+      shopNameDefault: 'Shree Fashion & Tailors',
+      taglineDefault: 'Custom Tailoring & Clothing Material',
+      billNoLabel: 'Bill No:',
+      dateLabel: 'Date:',
+      timeLabel: 'Time:',
+      counterLabel: 'Counter: Mobile POS',
+      colProduct: 'Product',
+      colQty: 'Qty',
+      colPrice: 'Price',
+      colSubtotal: 'Subtotal',
+      totalUnitsLabel: 'Total Units:',
+      unitsSuffix: 'items',
+      grandTotalLabel: 'GRAND TOTAL:',
+      thankYou: 'THANK YOU FOR YOUR VISIT!',
+      terms: 'Quality Tailoring & Perfect Fit Guaranteed. Visit Again!',
+      productNames: {
+        'Lining Cloth': 'Lining Cloth',
+        'Lining Jacket': 'Lining Jacket',
+        'Saree False': 'Saree False',
+        'Dress': 'Dress',
+        'Pencil Cut': 'Pencil Cut'
+      }
+    },
+    te: {
+      langCode: 'te',
+      langName: 'తెలుగు (Telugu)',
+      receiptTitle: 'బిల్లు రసీదు',
+      shopNameDefault: 'శ్రీ ఫ్యాషన్ & టైలర్స్',
+      taglineDefault: 'కస్టమ్ టైలరింగ్ & దుస్తుల మెటీరియల్స్',
+      billNoLabel: 'బిల్లు నెం:',
+      dateLabel: 'తేదీ:',
+      timeLabel: 'సమయం:',
+      counterLabel: 'కౌంటర్: మొబైల్ కౌంటర్',
+      colProduct: 'వస్తువు / రకం',
+      colQty: 'పరిమాణం',
+      colPrice: 'ధర',
+      colSubtotal: 'మొత్తం',
+      totalUnitsLabel: 'మొత్తం వస్తువులు:',
+      unitsSuffix: 'వస్తువులు',
+      grandTotalLabel: 'మొత్తం బిల్లు:',
+      thankYou: 'మా దుకాణాన్ని సందర్శించినందుకు ధన్యవాదాలు!',
+      terms: 'సరైన కొలత & నాణ్యమైన కుట్టుపని మా ప్రత్యేకత. మళ్లీ రండి!',
+      productNames: {
+        'Lining Cloth': 'లైనింగ్ క్లాత్',
+        'Lining Jacket': 'లైనింగ్ జాకెట్',
+        'Saree False': 'శారీ ఫాల్స్',
+        'Dress': 'డ్రెస్',
+        'Pencil Cut': 'పెన్సిల్ కట్'
+      }
+    }
+  };
+
   const BillingManager = {
-    // Current bill items: Array of { id, name, price, quantity, subtotal }
+    // Current bill items: Array of { id, name, price, quantity, subtotal, image }
     items: [],
     currentBillNumber: null,
     currentBillDate: null,
+    currentLanguage: 'en', // 'en' or 'te'
 
     /**
      * Initialize billing module.
@@ -52,10 +111,24 @@
 
       // Generate Bill buttons (main and sticky)
       if (generateBtn) {
-        generateBtn.addEventListener('click', () => this.openReceiptModal());
+        generateBtn.addEventListener('click', () => this.promptLanguageSelection());
       }
       if (stickyGenerateBtn) {
-        stickyGenerateBtn.addEventListener('click', () => this.openReceiptModal());
+        stickyGenerateBtn.addEventListener('click', () => this.promptLanguageSelection());
+      }
+
+      // Language selection modal buttons
+      const btnLangEn = document.getElementById('btn-choose-lang-en');
+      if (btnLangEn) {
+        btnLangEn.addEventListener('click', () => this.generateBillInLanguage('en'));
+      }
+      const btnLangTe = document.getElementById('btn-choose-lang-te');
+      if (btnLangTe) {
+        btnLangTe.addEventListener('click', () => this.generateBillInLanguage('te'));
+      }
+      const closeLangModalBtn = document.getElementById('btn-close-lang-modal');
+      if (closeLangModalBtn) {
+        closeLangModalBtn.addEventListener('click', () => this.closeLanguageModal());
       }
 
       // Sticky "View Bill" button (smooth scroll down to bill counter)
@@ -393,13 +466,75 @@
     },
 
     /**
-     * Open bill receipt modal with generated Bill Number and current date/time.
+     * Shows modal to choose language (English or Telugu) before generating bill.
      */
-    openReceiptModal() {
+    promptLanguageSelection() {
       if (this.items.length === 0) {
         alert('Please tap at least one product to generate a bill.');
         return;
       }
+      const langModal = document.getElementById('language-select-modal');
+      if (langModal) {
+        langModal.classList.add('active');
+      } else {
+        // Fallback: direct English
+        this.openReceiptModal('en');
+      }
+    },
+
+    /**
+     * Close language choice modal.
+     */
+    closeLanguageModal() {
+      const langModal = document.getElementById('language-select-modal');
+      if (langModal) langModal.classList.remove('active');
+    },
+
+    /**
+     * Generate bill in selected language.
+     * @param {'en'|'te'} lang 
+     */
+    generateBillInLanguage(lang) {
+      this.closeLanguageModal();
+      this.openReceiptModal(lang);
+    },
+
+    /**
+     * Switch language on the fly inside the active receipt modal.
+     * @param {'en'|'te'} lang 
+     */
+    switchReceiptLanguage(lang) {
+      if (!I18N[lang]) return;
+      this.currentLanguage = lang;
+      this.updateReceiptLanguageTabs();
+      this.renderReceiptContent(window.ShopStorage.getSettings());
+      this.showToast(`Bill language: ${I18N[lang].langName}`);
+    },
+
+    /**
+     * Update active CSS class on receipt modal language toggle tabs.
+     */
+    updateReceiptLanguageTabs() {
+      const tabs = document.querySelectorAll('.receipt-lang-tab');
+      tabs.forEach(tab => {
+        if (tab.dataset.lang === this.currentLanguage) {
+          tab.classList.add('active');
+        } else {
+          tab.classList.remove('active');
+        }
+      });
+    },
+
+    /**
+     * Open bill receipt modal with generated Bill Number and current date/time.
+     */
+    openReceiptModal(lang = 'en') {
+      if (this.items.length === 0) {
+        alert('Please tap at least one product to generate a bill.');
+        return;
+      }
+
+      this.currentLanguage = lang || this.currentLanguage || 'en';
 
       const modal = document.getElementById('receipt-modal');
       if (!modal) return;
@@ -408,6 +543,7 @@
       this.currentBillNumber = window.ShopStorage.getNextBillNumber();
       this.currentBillDate = new Date();
 
+      this.updateReceiptLanguageTabs();
       this.renderReceiptContent(settings);
       modal.classList.add('active');
     },
@@ -421,19 +557,33 @@
     },
 
     /**
-     * Formats receipt DOM content.
+     * Formats receipt DOM content according to selected language (English or Telugu).
      */
     renderReceiptContent(settings) {
       const receiptEl = document.getElementById('receipt-printable-area');
       if (!receiptEl) return;
 
+      const i18n = I18N[this.currentLanguage] || I18N.en;
       const currency = settings.currencySymbol || '₹';
-      const formattedDate = this.currentBillDate.toLocaleDateString(undefined, {
+
+      // Localized shop info
+      const isDefaultShop = !settings.shopName || settings.shopName === 'Shree Fashion & Tailors';
+      const shopDisplayName = (this.currentLanguage === 'te' && isDefaultShop) 
+        ? i18n.shopNameDefault 
+        : (settings.shopName || i18n.shopNameDefault);
+
+      const isDefaultTag = !settings.shopTagline || settings.shopTagline === 'Custom Tailoring & Clothing Material';
+      const shopDisplayTag = (this.currentLanguage === 'te' && isDefaultTag) 
+        ? i18n.taglineDefault 
+        : (settings.shopTagline || i18n.taglineDefault);
+
+      const localeCode = this.currentLanguage === 'te' ? 'te-IN' : 'en-IN';
+      const formattedDate = this.currentBillDate.toLocaleDateString(localeCode, {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
       });
-      const formattedTime = this.currentBillDate.toLocaleTimeString(undefined, {
+      const formattedTime = this.currentBillDate.toLocaleTimeString(localeCode, {
         hour: '2-digit',
         minute: '2-digit'
       });
@@ -445,13 +595,16 @@
         grandTotal += item.subtotal;
         totalQty += item.quantity;
         const thumb = item.image || window.ShopStorage.DEFAULT_IMAGE;
+        // Translate standard tailoring product names to Telugu if in Telugu mode
+        const localizedName = (i18n.productNames && i18n.productNames[item.name]) ? i18n.productNames[item.name] : item.name;
+
         return `
           <tr>
             <td class="r-item">
               <div style="display: flex; align-items: center; gap: 6px;">
                 <img src="${thumb}" alt="" style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px; border: 1px solid #cbd5e1; flex-shrink: 0;">
                 <div>
-                  <span class="r-name">${this.escapeHtml(item.name)}</span>
+                  <span class="r-name">${this.escapeHtml(localizedName)}</span>
                   <span class="r-code">#${item.id}</span>
                 </div>
               </div>
@@ -465,8 +618,8 @@
 
       receiptEl.innerHTML = `
         <div class="receipt-header">
-          <h2 class="receipt-shop-name" contenteditable="true" title="Click to edit shop name" onblur="BillingManager.saveInlineShopName(this.innerText)">${this.escapeHtml(settings.shopName)}</h2>
-          <p class="receipt-shop-sub">${this.escapeHtml(settings.shopTagline)}</p>
+          <h2 class="receipt-shop-name" contenteditable="true" title="Click to edit shop name" onblur="BillingManager.saveInlineShopName(this.innerText)">${this.escapeHtml(shopDisplayName)}</h2>
+          <p class="receipt-shop-sub">${this.escapeHtml(shopDisplayTag)}</p>
           <p class="receipt-shop-addr">${this.escapeHtml(settings.shopAddress)}</p>
           <p class="receipt-shop-phone">Tel: ${this.escapeHtml(settings.shopPhone)}</p>
         </div>
@@ -475,12 +628,12 @@
 
         <div class="receipt-meta">
           <div class="receipt-meta-row">
-            <span><strong>Bill No:</strong> #${this.currentBillNumber}</span>
-            <span><strong>Date:</strong> ${formattedDate}</span>
+            <span><strong>${i18n.billNoLabel}</strong> #${this.currentBillNumber}</span>
+            <span><strong>${i18n.dateLabel}</strong> ${formattedDate}</span>
           </div>
           <div class="receipt-meta-row">
-            <span><strong>Counter:</strong> Mobile POS</span>
-            <span><strong>Time:</strong> ${formattedTime}</span>
+            <span><strong>${i18n.counterLabel}</strong></span>
+            <span><strong>${i18n.timeLabel}</strong> ${formattedTime}</span>
           </div>
         </div>
 
@@ -489,10 +642,10 @@
         <table class="receipt-table">
           <thead>
             <tr>
-              <th class="text-left">Product</th>
-              <th class="text-center">Qty</th>
-              <th class="text-right">Price</th>
-              <th class="text-right">Subtotal</th>
+              <th class="text-left">${i18n.colProduct}</th>
+              <th class="text-center">${i18n.colQty}</th>
+              <th class="text-right">${i18n.colPrice}</th>
+              <th class="text-right">${i18n.colSubtotal}</th>
             </tr>
           </thead>
           <tbody>
@@ -504,11 +657,11 @@
 
         <div class="receipt-totals">
           <div class="receipt-total-row">
-            <span>Total Units:</span>
-            <span>${totalQty} items</span>
+            <span>${i18n.totalUnitsLabel}</span>
+            <span>${totalQty} ${i18n.unitsSuffix}</span>
           </div>
           <div class="receipt-total-row grand">
-            <span>GRAND TOTAL:</span>
+            <span>${i18n.grandTotalLabel}</span>
             <span>${currency}${grandTotal.toFixed(2)}</span>
           </div>
         </div>
@@ -516,8 +669,8 @@
         <div class="receipt-divider"></div>
 
         <div class="receipt-footer">
-          <p class="thank-you">THANK YOU FOR YOUR VISIT!</p>
-          <p class="terms">Tailoring & Clothing Material. Visit Again!</p>
+          <p class="thank-you">${i18n.thankYou}</p>
+          <p class="terms">${i18n.terms}</p>
         </div>
       `;
     },
@@ -542,25 +695,40 @@
     },
 
     /**
-     * Native Canvas-based Receipt Screenshot Generator.
+     * Native Canvas-based Receipt Screenshot Generator in Selected Language (Telugu / English).
      * Produces clean PNG image download without third-party libraries.
      */
     downloadReceiptScreenshot() {
       const settings = window.ShopStorage.getSettings();
+      const i18n = I18N[this.currentLanguage] || I18N.en;
       const currency = settings.currencySymbol || '₹';
       const billNo = this.currentBillNumber || '1001';
-      const dateStr = this.currentBillDate ? this.currentBillDate.toLocaleDateString() : new Date().toLocaleDateString();
-      const timeStr = this.currentBillDate ? this.currentBillDate.toLocaleTimeString() : new Date().toLocaleTimeString();
+
+      const isDefaultShop = !settings.shopName || settings.shopName === 'Shree Fashion & Tailors';
+      const shopDisplayName = (this.currentLanguage === 'te' && isDefaultShop) 
+        ? i18n.shopNameDefault 
+        : (settings.shopName || i18n.shopNameDefault);
+
+      const isDefaultTag = !settings.shopTagline || settings.shopTagline === 'Custom Tailoring & Clothing Material';
+      const shopDisplayTag = (this.currentLanguage === 'te' && isDefaultTag) 
+        ? i18n.taglineDefault 
+        : (settings.shopTagline || i18n.taglineDefault);
+
+      const localeCode = this.currentLanguage === 'te' ? 'te-IN' : 'en-IN';
+      const dateStr = this.currentBillDate ? this.currentBillDate.toLocaleDateString(localeCode) : new Date().toLocaleDateString(localeCode);
+      const timeStr = this.currentBillDate ? this.currentBillDate.toLocaleTimeString(localeCode) : new Date().toLocaleTimeString(localeCode);
 
       const canvas = document.createElement('canvas');
       const width = 640;
       const baseHeight = 440;
-      const rowHeight = 36;
+      const rowHeight = 38;
       const height = baseHeight + (this.items.length * rowHeight);
 
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext('2d');
+
+      const fontTelugu = 'system-ui, -apple-system, "Nirmala UI", "Gautami", "Segoe UI", sans-serif';
 
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, width, height);
@@ -569,19 +737,22 @@
       ctx.lineWidth = 4;
       ctx.strokeRect(8, 8, width - 16, height - 16);
 
+      // Top bar
       ctx.fillStyle = '#1e3a8a';
       ctx.fillRect(10, 10, width - 20, 8);
 
+      // Shop Name & Tagline
       ctx.fillStyle = '#0f172a';
-      ctx.font = 'bold 22px system-ui, -apple-system, sans-serif';
+      ctx.font = `bold 22px ${fontTelugu}`;
       ctx.textAlign = 'center';
-      ctx.fillText(settings.shopName.toUpperCase(), width / 2, 50);
+      ctx.fillText(shopDisplayName, width / 2, 50);
 
       ctx.fillStyle = '#64748b';
-      ctx.font = '13px system-ui, -apple-system, sans-serif';
-      ctx.fillText(settings.shopTagline, width / 2, 72);
+      ctx.font = `13px ${fontTelugu}`;
+      ctx.fillText(shopDisplayTag, width / 2, 72);
       ctx.fillText(settings.shopAddress + ' | Tel: ' + settings.shopPhone, width / 2, 92);
 
+      // Divider
       ctx.strokeStyle = '#cbd5e1';
       ctx.lineWidth = 1;
       ctx.setLineDash([4, 4]);
@@ -591,30 +762,32 @@
       ctx.stroke();
       ctx.setLineDash([]);
 
+      // Meta
       ctx.fillStyle = '#334155';
-      ctx.font = '13px monospace';
+      ctx.font = `13px ${fontTelugu}`;
       ctx.textAlign = 'left';
-      ctx.fillText(`BILL NO: #${billNo}`, 35, 132);
+      ctx.fillText(`${i18n.billNoLabel} #${billNo}`, 35, 132);
       ctx.textAlign = 'right';
-      ctx.fillText(`DATE: ${dateStr} ${timeStr}`, width - 35, 132);
+      ctx.fillText(`${i18n.dateLabel} ${dateStr} ${timeStr}`, width - 35, 132);
 
+      // Table Header Box
       ctx.fillStyle = '#f8fafc';
-      ctx.fillRect(30, 150, width - 60, 30);
+      ctx.fillRect(30, 150, width - 60, 32);
       ctx.fillStyle = '#475569';
-      ctx.font = 'bold 13px system-ui, -apple-system, sans-serif';
+      ctx.font = `bold 13px ${fontTelugu}`;
       ctx.textAlign = 'left';
-      ctx.fillText('PRODUCT', 40, 170);
+      ctx.fillText(i18n.colProduct, 40, 171);
       ctx.textAlign = 'center';
-      ctx.fillText('QTY', 330, 170);
+      ctx.fillText(i18n.colQty, 330, 171);
       ctx.textAlign = 'right';
-      ctx.fillText('PRICE', 440, 170);
-      ctx.fillText('SUBTOTAL', width - 40, 170);
+      ctx.fillText(i18n.colPrice, 440, 171);
+      ctx.fillText(i18n.colSubtotal, width - 40, 171);
 
-      let currentY = 210;
+      let currentY = 212;
       let grandTotal = 0;
       let totalQty = 0;
 
-      ctx.font = '14px system-ui, -apple-system, sans-serif';
+      ctx.font = `14px ${fontTelugu}`;
       this.items.forEach((item, idx) => {
         grandTotal += item.subtotal;
         totalQty += item.quantity;
@@ -624,9 +797,11 @@
           ctx.fillRect(30, currentY - 20, width - 60, rowHeight);
         }
 
+        const localizedName = (i18n.productNames && i18n.productNames[item.name]) ? i18n.productNames[item.name] : item.name;
+
         ctx.fillStyle = '#0f172a';
         ctx.textAlign = 'left';
-        const nameText = `${item.name} (#${item.id})`;
+        const nameText = `${localizedName} (#${item.id})`;
         ctx.fillText(nameText.length > 28 ? nameText.slice(0, 26) + '..' : nameText, 40, currentY);
 
         ctx.textAlign = 'center';
@@ -634,9 +809,9 @@
 
         ctx.textAlign = 'right';
         ctx.fillText(`${currency}${item.price.toFixed(2)}`, 440, currentY);
-        ctx.font = 'bold 14px system-ui, -apple-system, sans-serif';
+        ctx.font = `bold 14px ${fontTelugu}`;
         ctx.fillText(`${currency}${item.subtotal.toFixed(2)}`, width - 40, currentY);
-        ctx.font = '14px system-ui, -apple-system, sans-serif';
+        ctx.font = `14px ${fontTelugu}`;
 
         currentY += rowHeight;
       });
@@ -649,6 +824,7 @@
       ctx.stroke();
       ctx.setLineDash([]);
 
+      // Grand Total Box
       currentY += 35;
       ctx.fillStyle = '#eff6ff';
       ctx.fillRect(30, currentY - 24, width - 60, 44);
@@ -656,32 +832,33 @@
       ctx.strokeRect(30, currentY - 24, width - 60, 44);
 
       ctx.fillStyle = '#1e3a8a';
-      ctx.font = 'bold 15px system-ui, -apple-system, sans-serif';
+      ctx.font = `bold 14px ${fontTelugu}`;
       ctx.textAlign = 'left';
-      ctx.fillText(`TOTAL UNITS: ${totalQty}`, 45, currentY + 4);
+      ctx.fillText(`${i18n.totalUnitsLabel} ${totalQty} ${i18n.unitsSuffix}`, 45, currentY + 4);
 
-      ctx.font = 'bold 18px system-ui, -apple-system, sans-serif';
+      ctx.font = `bold 17px ${fontTelugu}`;
       ctx.textAlign = 'right';
-      ctx.fillText(`GRAND TOTAL: ${currency}${grandTotal.toFixed(2)}`, width - 45, currentY + 4);
+      ctx.fillText(`${i18n.grandTotalLabel} ${currency}${grandTotal.toFixed(2)}`, width - 45, currentY + 4);
 
       currentY += 50;
       ctx.fillStyle = '#64748b';
-      ctx.font = 'bold 13px system-ui, -apple-system, sans-serif';
+      ctx.font = `bold 13px ${fontTelugu}`;
       ctx.textAlign = 'center';
-      ctx.fillText('THANK YOU FOR YOUR VISIT!', width / 2, currentY);
+      ctx.fillText(i18n.thankYou, width / 2, currentY);
       currentY += 18;
-      ctx.font = '11px system-ui, -apple-system, sans-serif';
-      ctx.fillText('Quality Tailoring & Perfect Fit Guaranteed', width / 2, currentY);
+      ctx.font = `11px ${fontTelugu}`;
+      ctx.fillText(i18n.terms, width / 2, currentY);
 
+      const langSlug = this.currentLanguage === 'te' ? 'Telugu' : 'English';
       try {
         const link = document.createElement('a');
-        link.download = `Bill_${billNo}_Receipt.png`;
+        link.download = `Bill_${billNo}_${langSlug}_Receipt.png`;
         link.href = canvas.toDataURL('image/png');
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
 
-        this.showToast(`Receipt screenshot saved: Bill_${billNo}_Receipt.png`);
+        this.showToast(`Saved ${langSlug} receipt screenshot: Bill_${billNo}_${langSlug}_Receipt.png`);
       } catch (err) {
         console.error('Screenshot download error:', err);
         alert('Could not download screenshot: ' + err.message);

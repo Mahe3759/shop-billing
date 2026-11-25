@@ -242,6 +242,44 @@
   </div>
 
   <!-- =========================================================================
+       MODAL: SELECT BILL LANGUAGE (TELUGU OR ENGLISH)
+       ========================================================================= -->
+  <div class="modal-backdrop" id="language-select-modal" role="dialog" aria-modal="true" aria-labelledby="lang-modal-title">
+    <div class="modal-card" style="max-width: 380px;">
+      <div class="modal-header">
+        <h3 id="lang-modal-title">Select Bill Language / భాష</h3>
+        <button type="button" class="btn-close-modal" id="btn-close-lang-modal" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 16px;">
+        <p class="section-subtitle" style="margin-bottom: 14px;">
+          Choose how you want to generate your bill:
+        </p>
+        <div class="lang-choices-grid">
+          <!-- Option 1: English -->
+          <button type="button" class="btn-lang-choice" id="btn-choose-lang-en">
+            <div class="lang-choice-icon">🇬🇧</div>
+            <div class="lang-choice-content">
+              <strong class="lang-choice-title">English Bill</strong>
+              <span class="lang-choice-sub">Generate receipt in English</span>
+            </div>
+            <span class="lang-choice-arrow">→</span>
+          </button>
+
+          <!-- Option 2: Telugu -->
+          <button type="button" class="btn-lang-choice te-theme" id="btn-choose-lang-te">
+            <div class="lang-choice-icon">🇮🇳</div>
+            <div class="lang-choice-content">
+              <strong class="lang-choice-title">తెలుగు బిల్లు (Telugu)</strong>
+              <span class="lang-choice-sub">పూర్తి వివరాలు తెలుగులో పొందండి</span>
+            </div>
+            <span class="lang-choice-arrow">→</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
        MODAL 3: BILL RECEIPT GENERATION & PRINT / SCREENSHOT
        ========================================================================= -->
   <div class="modal-backdrop" id="receipt-modal" role="dialog" aria-modal="true" aria-labelledby="receipt-modal-title">
@@ -251,9 +289,22 @@
         <button type="button" class="btn-close-modal" id="btn-receipt-close" aria-label="Close">&times;</button>
       </div>
 
+      <!-- Quick Language Switcher Tabs inside Receipt -->
+      <div class="receipt-lang-switcher-bar">
+        <span class="switcher-label">Language:</span>
+        <div class="receipt-lang-tabs">
+          <button type="button" class="receipt-lang-tab active" data-lang="en" onclick="BillingManager.switchReceiptLanguage('en')">
+            English
+          </button>
+          <button type="button" class="receipt-lang-tab" data-lang="te" onclick="BillingManager.switchReceiptLanguage('te')">
+            తెలుగు (Telugu)
+          </button>
+        </div>
+      </div>
+
       <div class="modal-body" style="padding: 12px;">
         <div class="receipt-paper" id="receipt-printable-area">
-          <!-- Receipt content generated dynamically by js/billing.js -->
+          <!-- Receipt content generated dynamically by js/billing.js in selected language -->
         </div>
       </div>
 
