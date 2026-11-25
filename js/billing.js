@@ -175,6 +175,11 @@
         screenshotBtn.addEventListener('click', () => this.downloadReceiptScreenshot());
       }
 
+      const whatsappBtn = document.getElementById('btn-receipt-whatsapp');
+      if (whatsappBtn) {
+        whatsappBtn.addEventListener('click', () => this.shareViaWhatsApp());
+      }
+
       const newBillBtn = document.getElementById('btn-receipt-new');
       if (newBillBtn) {
         newBillBtn.addEventListener('click', () => {
@@ -699,10 +704,11 @@
     },
 
     /**
-     * Native Canvas-based Receipt Screenshot Generator in Selected Language (Telugu / English).
-     * Produces clean PNG image download without third-party libraries.
+     * Builds and renders the bill receipt onto a 2D Canvas.
+     * Shared by screenshot download and WhatsApp photo sharing.
+     * @returns {HTMLCanvasElement}
      */
-    downloadReceiptScreenshot() {
+    generateReceiptCanvas() {
       const settings = window.ShopStorage.getSettings();
       const i18n = I18N[this.currentLanguage] || I18N.en;
       const currency = settings.currencySymbol || '₹';
@@ -855,7 +861,18 @@
       ctx.font = `11px ${fontTelugu}`;
       ctx.fillText(i18n.terms, width / 2, currentY);
 
+      return canvas;
+    },
+
+    /**
+     * Native Canvas-based Receipt Screenshot Generator in Selected Language (Telugu / English).
+     * Produces clean PNG image download without third-party libraries.
+     */
+    downloadReceiptScreenshot() {
+      const canvas = this.generateReceiptCanvas();
+      const billNo = this.currentBillNumber || '1001';
       const langSlug = this.currentLanguage === 'te' ? 'Telugu' : 'English';
+
       try {
         const link = document.createElement('a');
         link.download = `Bill_${billNo}_${langSlug}_Receipt.png`;
@@ -869,6 +886,105 @@
         console.error('Screenshot download error:', err);
         alert('Could not download screenshot: ' + err.message);
       }
+    },
+
+    /**
+     * Generates a clean WhatsApp text summary of the bill in the active language.
+     * @returns {string}
+     */
+    getBillSummaryText() {
+      const settings = window.ShopStorage.getSettings();
+      const i18n = I18N[this.currentLanguage] || I18N.en;
+      const currency = settings.currencySymbol || '₹';
+      const billNo = this.currentBillNumber || '1001';
+
+      const isDefaultShop = !settings.shopName || settings.shopName === 'Shree Fashion & Tailors';
+      const shopDisplayName = (this.currentLanguage === 'te' && isDefaultShop) 
+        ? i18n.shopNameDefault 
+        : (settings.shopName || i18n.shopNameDefault);
+
+      const localeCode = this.currentLanguage === 'te' ? 'te-IN' : 'en-IN';
+      const dateStr = this.currentBillDate ? this.currentBillDate.toLocaleDateString(localeCode) : new Date().toLocaleDateString(localeCode);
+
+      let grandTotal = 0;
+      const lines = this.items.map((item, i) => {
+        grandTotal += item.subtotal;
+        const name = this.currentLanguage === 'te' 
+          ? (item.nameTe || (window.toTelugu ? window.toTelugu(item.name) : item.name))
+          : item.name;
+        return `${i + 1}. ${name} x ${item.quantity} = ${currency}${item.subtotal.toFixed(2)}`;
+      });
+
+      return `*${shopDisplayName}*
+${i18n.billNoLabel} #${billNo}
+${i18n.dateLabel} ${dateStr}
+
+${lines.join('\n')}
+
+*${i18n.grandTotalLabel} ${currency}${grandTotal.toFixed(2)}*
+${i18n.thankYou}`;
+    },
+
+    /**
+     * Shares the bill photo and details directly to WhatsApp.
+     * Uses Web Share API with File on mobile so WhatsApp opens with the photo preview,
+     * allowing the user to select the contact number and send.
+     * Falls back to downloading the photo and opening WhatsApp on desktop.
+     */
+    shareViaWhatsApp() {
+      if (this.items.length === 0) {
+        alert('Please add products to the bill first.');
+        return;
+      }
+
+      const canvas = this.generateReceiptCanvas();
+      const billNo = this.currentBillNumber || '1001';
+      const langSlug = this.currentLanguage === 'te' ? 'Telugu' : 'English';
+      const fileName = `Bill_${billNo}_${langSlug}_Receipt.png`;
+      const summaryText = this.getBillSummaryText();
+
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          alert('Could not generate receipt image.');
+          return;
+        }
+
+        const file = new File([blob], fileName, { type: 'image/png' });
+
+        // 1. Mobile Web Share API: Opens WhatsApp with the photo attached!
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              title: this.currentLanguage === 'te' ? 'బిల్లు రసీదు' : 'Bill Receipt',
+              text: summaryText,
+              files: [file]
+            });
+            this.showToast('Shared to WhatsApp successfully!');
+            return;
+          } catch (err) {
+            if (err.name === 'AbortError') {
+              // User canceled the share dialog
+              return;
+            }
+            console.warn('WebShare file share failed, falling back:', err);
+          }
+        }
+
+        // 2. Fallback for Desktop/browsers without file share permission:
+        // Download receipt photo so it's ready in gallery/downloads, and open WhatsApp!
+        try {
+          const link = document.createElement('a');
+          link.download = fileName;
+          link.href = canvas.toDataURL('image/png');
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        } catch (e) {}
+
+        const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(summaryText)}`;
+        window.open(waUrl, '_blank');
+        this.showToast('Bill photo downloaded! Select contact in WhatsApp.');
+      }, 'image/png');
     },
 
     /**
