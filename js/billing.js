@@ -926,12 +926,28 @@ ${i18n.thankYou}`;
     },
 
     /**
-     * Shares the bill photo and details directly to WhatsApp.
-     * Uses Web Share API with File on mobile so WhatsApp opens with the photo preview,
-     * allowing the user to select the contact number and send.
-     * Falls back to downloading the photo and opening WhatsApp on desktop.
+     * Converts a base64 dataURL to a File object synchronously,
+     * maintaining transient user activation for navigator.share().
      */
-    shareViaWhatsApp() {
+    dataUrlToFile(dataUrl, filename) {
+      const arr = dataUrl.split(',');
+      const mime = (arr[0].match(/:(.*?);/) || [])[1] || 'image/png';
+      const bstr = atob(arr[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+      return new File([u8arr], filename, { type: mime });
+    },
+
+    /**
+     * Shares the bill photo and details directly to WhatsApp.
+     * Uses synchronous File creation to ensure mobile user gesture token remains valid.
+     * Web Share API opens WhatsApp directly with the photo preview,
+     * allowing the user to select the contact number and send.
+     */
+    async shareViaWhatsApp() {
       if (this.items.length === 0) {
         alert('Please add products to the bill first.');
         return;
@@ -943,48 +959,49 @@ ${i18n.thankYou}`;
       const fileName = `Bill_${billNo}_${langSlug}_Receipt.png`;
       const summaryText = this.getBillSummaryText();
 
-      canvas.toBlob(async (blob) => {
-        if (!blob) {
-          alert('Could not generate receipt image.');
-          return;
-        }
+      // Synchronously convert to File to preserve browser User Activation
+      const dataUrl = canvas.toDataURL('image/png');
+      const file = this.dataUrlToFile(dataUrl, fileName);
 
-        const file = new File([blob], fileName, { type: 'image/png' });
-
-        // 1. Mobile Web Share API: Opens WhatsApp with the photo attached!
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          try {
-            await navigator.share({
-              title: this.currentLanguage === 'te' ? 'బిల్లు రసీదు' : 'Bill Receipt',
-              text: summaryText,
-              files: [file]
-            });
-            this.showToast('Shared to WhatsApp successfully!');
-            return;
-          } catch (err) {
-            if (err.name === 'AbortError') {
-              // User canceled the share dialog
-              return;
-            }
-            console.warn('WebShare file share failed, falling back:', err);
-          }
-        }
-
-        // 2. Fallback for Desktop/browsers without file share permission:
-        // Download receipt photo so it's ready in gallery/downloads, and open WhatsApp!
+      // 1. Mobile Web Share API: Opens WhatsApp with the photo file attached!
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
-          const link = document.createElement('a');
-          link.download = fileName;
-          link.href = canvas.toDataURL('image/png');
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        } catch (e) {}
+          await navigator.share({
+            title: this.currentLanguage === 'te' ? 'బిల్లు రసీదు' : 'Bill Receipt',
+            text: summaryText,
+            files: [file]
+          });
+          this.showToast('Shared to WhatsApp successfully!');
+          return;
+        } catch (err) {
+          if (err.name === 'AbortError') {
+            // User canceled the share dialog
+            return;
+          }
+          console.warn('WebShare file share failed, falling back:', err);
+        }
+      }
 
-        const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(summaryText)}`;
-        window.open(waUrl, '_blank');
-        this.showToast('Bill photo downloaded! Select contact in WhatsApp.');
-      }, 'image/png');
+      // 2. Fallback: Save photo to gallery/downloads and open WhatsApp mobile app directly
+      try {
+        const link = document.createElement('a');
+        link.download = fileName;
+        link.href = dataUrl;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (e) {}
+
+      const encodedText = encodeURIComponent(summaryText);
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (isMobile) {
+        // Deep-link directly into the mobile WhatsApp application
+        window.location.href = `whatsapp://send?text=${encodedText}`;
+      } else {
+        window.open(`https://api.whatsapp.com/send?text=${encodedText}`, '_blank');
+      }
+
+      this.showToast('Receipt photo saved! Opening WhatsApp...');
     },
 
     /**
