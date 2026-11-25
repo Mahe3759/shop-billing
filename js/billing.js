@@ -121,7 +121,7 @@
      * If already in bill, increments quantity by 1.
      * @param {number} productId 
      */
-    addOne(productId) {
+    async addOne(productId) {
       const product = window.ShopStorage.getProductById(productId);
       if (!product) return;
 
@@ -131,12 +131,14 @@
         existing.quantity += 1;
         existing.subtotal = existing.quantity * existing.price;
       } else {
+        const imgSrc = await window.ShopStorage.resolveProductImage(product);
         this.items.push({
           id: product.id,
           name: product.name,
           price: parseFloat(product.price),
           quantity: 1,
-          subtotal: parseFloat(product.price)
+          subtotal: parseFloat(product.price),
+          image: imgSrc || window.ShopStorage.DEFAULT_IMAGE
         });
       }
 
@@ -210,6 +212,7 @@
 
     /**
      * Render the touch-friendly, mobile-first bill item cards.
+     * Displays: Small product image, Product #, Name, Quantity stepper, Unit Price, and Sub-amount.
      */
     renderBillList() {
       const listContainer = document.getElementById('bill-items-list');
@@ -227,38 +230,50 @@
 
       if (emptyState) emptyState.style.display = 'none';
 
-      listContainer.innerHTML = this.items.map(item => `
+      listContainer.innerHTML = this.items.map(item => {
+        const imgSrc = item.image || window.ShopStorage.DEFAULT_IMAGE;
+        return `
         <div class="bill-item-row" data-id="${item.id}">
+          <!-- 1. Small Product Image Thumbnail Profile -->
+          <div class="bill-item-thumb">
+            <img src="${imgSrc}" alt="${this.escapeHtml(item.name)}" loading="lazy" onerror="this.src='images/products/default.svg'">
+          </div>
+
+          <!-- 2. Product #, Name & Unit Price -->
           <div class="bill-item-main">
             <div class="bill-item-name-wrap">
               <span class="bill-item-tag">#${item.id}</span>
               <strong class="bill-item-title">${this.escapeHtml(item.name)}</strong>
             </div>
             <div class="bill-item-rate">
-              ${currency}${item.price.toFixed(2)} each
+              ${currency}${item.price.toFixed(2)} / unit
             </div>
           </div>
 
-          <!-- Big touch steppers (+ / -) -->
+          <!-- 3. Quantity Stepper (- Qty +) -->
           <div class="bill-stepper-wrap">
             <button type="button" class="btn-stepper btn-stepper-minus" onclick="BillingManager.decreaseOne(${item.id})" aria-label="Decrease quantity">
               −
             </button>
-            <span class="stepper-val">${item.quantity}</span>
+            <span class="stepper-val" title="Quantity">${item.quantity}</span>
             <button type="button" class="btn-stepper btn-stepper-plus" onclick="BillingManager.increaseOne(${item.id})" aria-label="Increase quantity">
               +
             </button>
           </div>
 
-          <!-- Line Subtotal & Delete -->
+          <!-- 4. Sub-amount (Subtotal) & Delete -->
           <div class="bill-item-subtotal-wrap">
-            <span class="bill-item-subtotal">${currency}${item.subtotal.toFixed(2)}</span>
+            <div class="subtotal-label-box">
+              <span class="subtotal-caption">Subtotal</span>
+              <span class="bill-item-subtotal">${currency}${item.subtotal.toFixed(2)}</span>
+            </div>
             <button type="button" class="btn-remove-item" onclick="BillingManager.removeItem(${item.id})" title="Remove item" aria-label="Remove ${this.escapeHtml(item.name)}">
               🗑
             </button>
           </div>
         </div>
-      `).join('');
+      `;
+      }).join('');
     },
 
     /**
@@ -429,11 +444,17 @@
       const rows = this.items.map(item => {
         grandTotal += item.subtotal;
         totalQty += item.quantity;
+        const thumb = item.image || window.ShopStorage.DEFAULT_IMAGE;
         return `
           <tr>
             <td class="r-item">
-              <span class="r-name">${this.escapeHtml(item.name)}</span>
-              <span class="r-code">#${item.id}</span>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <img src="${thumb}" alt="" style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px; border: 1px solid #cbd5e1; flex-shrink: 0;">
+                <div>
+                  <span class="r-name">${this.escapeHtml(item.name)}</span>
+                  <span class="r-code">#${item.id}</span>
+                </div>
+              </div>
             </td>
             <td class="r-qty text-center">${item.quantity}</td>
             <td class="r-price text-right">${currency}${item.price.toFixed(2)}</td>
