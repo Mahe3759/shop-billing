@@ -283,6 +283,12 @@
       form.reset();
       preview.src = window.ShopStorage.DEFAULT_IMAGE;
 
+      const nameTeInput = document.getElementById('prod-name-te');
+      if (nameTeInput) {
+        nameTeInput.value = '';
+        nameTeInput._manuallyEdited = false;
+      }
+
       const nextId = window.ShopStorage.peekNextBillNumber ? 
         (parseInt(localStorage.getItem('shop_billing_next_product_id'), 10) || 106) : 106;
       if (nextIdSpan) {
@@ -357,9 +363,11 @@
       event.preventDefault();
 
       const nameInput = document.getElementById('prod-name');
+      const nameTeInput = document.getElementById('prod-name-te');
       const priceInput = document.getElementById('prod-price');
 
       const name = nameInput.value.trim();
+      const nameTe = (nameTeInput && nameTeInput.value.trim()) || (window.toTelugu ? window.toTelugu(name) : name);
       const price = parseFloat(priceInput.value);
 
       if (!name) {
@@ -380,6 +388,7 @@
       const newProduct = {
         id: newId,
         name: name,
+        nameTe: nameTe,
         price: price,
         image: window.ShopStorage.DEFAULT_IMAGE,
         customImageKey: null
@@ -440,6 +449,20 @@
       const form = document.getElementById('product-form');
       if (form) {
         form.addEventListener('submit', (e) => this.saveProductForm(e));
+      }
+
+      // Live Telugu auto-conversion when typing English name
+      const nameInput = document.getElementById('prod-name');
+      const nameTeInput = document.getElementById('prod-name-te');
+      if (nameInput && nameTeInput) {
+        nameInput.addEventListener('input', () => {
+          if (window.toTelugu && !nameTeInput._manuallyEdited) {
+            nameTeInput.value = window.toTelugu(nameInput.value);
+          }
+        });
+        nameTeInput.addEventListener('input', () => {
+          nameTeInput._manuallyEdited = true;
+        });
       }
 
       // Simplified price edit form

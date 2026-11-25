@@ -205,9 +205,11 @@
         existing.subtotal = existing.quantity * existing.price;
       } else {
         const imgSrc = await window.ShopStorage.resolveProductImage(product);
+        const nameTe = product.nameTe || (window.toTelugu ? window.toTelugu(product.name) : product.name);
         this.items.push({
           id: product.id,
           name: product.name,
+          nameTe: nameTe,
           price: parseFloat(product.price),
           quantity: 1,
           subtotal: parseFloat(product.price),
@@ -595,8 +597,10 @@
         grandTotal += item.subtotal;
         totalQty += item.quantity;
         const thumb = item.image || window.ShopStorage.DEFAULT_IMAGE;
-        // Translate standard tailoring product names to Telugu if in Telugu mode
-        const localizedName = (i18n.productNames && i18n.productNames[item.name]) ? i18n.productNames[item.name] : item.name;
+        // Auto-convert to Telugu if in Telugu mode
+        const localizedName = this.currentLanguage === 'te'
+          ? (item.nameTe || (window.toTelugu ? window.toTelugu(item.name) : item.name))
+          : item.name;
 
         return `
           <tr>
@@ -797,7 +801,9 @@
           ctx.fillRect(30, currentY - 20, width - 60, rowHeight);
         }
 
-        const localizedName = (i18n.productNames && i18n.productNames[item.name]) ? i18n.productNames[item.name] : item.name;
+        const localizedName = this.currentLanguage === 'te'
+          ? (item.nameTe || (window.toTelugu ? window.toTelugu(item.name) : item.name))
+          : item.name;
 
         ctx.fillStyle = '#0f172a';
         ctx.textAlign = 'left';

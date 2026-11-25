@@ -33,6 +33,7 @@
     {
       id: 101,
       name: 'Lining Cloth',
+      nameTe: 'లైనింగ్ క్లాత్',
       price: 40.00,
       image: 'images/products/lining-cloth.svg',
       customImageKey: null
@@ -40,6 +41,7 @@
     {
       id: 102,
       name: 'Lining Jacket',
+      nameTe: 'లైనింగ్ జాకెట్',
       price: 350.00,
       image: 'images/products/lining-jacket.svg',
       customImageKey: null
@@ -47,6 +49,7 @@
     {
       id: 103,
       name: 'Saree False',
+      nameTe: 'శారీ ఫాల్స్',
       price: 30.00,
       image: 'images/products/saree-false.svg',
       customImageKey: null
@@ -54,6 +57,7 @@
     {
       id: 104,
       name: 'Dress',
+      nameTe: 'డ్రెస్',
       price: 450.00,
       image: 'images/products/dress.svg',
       customImageKey: null
@@ -61,6 +65,7 @@
     {
       id: 105,
       name: 'Pencil Cut',
+      nameTe: 'పెన్సిల్ కట్',
       price: 250.00,
       image: 'images/products/pencil-cut.svg',
       customImageKey: null
@@ -183,14 +188,21 @@
     },
 
     /**
-     * Get list of all products.
+     * Get list of all products (with auto-Telugu support).
      * @returns {Array} List of product objects
      */
     getProducts() {
       this.init();
       try {
         const raw = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
-        return raw ? JSON.parse(raw) : INITIAL_PRODUCTS;
+        const list = raw ? JSON.parse(raw) : INITIAL_PRODUCTS;
+        // Ensure every product has a valid Telugu name
+        return list.map(p => {
+          if (!p.nameTe && window.toTelugu) {
+            p.nameTe = window.toTelugu(p.name);
+          }
+          return p;
+        });
       } catch (e) {
         console.error('Failed to parse products from localStorage:', e);
         return INITIAL_PRODUCTS;

@@ -212,8 +212,14 @@
       <form id="product-form">
         <div class="modal-body">
           <div class="input-group">
-            <label for="prod-name">Product Name *</label>
-            <input type="text" id="prod-name" class="input-control" placeholder="e.g. Silk Saree False, Cotton Kurta" required>
+            <label for="prod-name">Product Name (English / పేరు) *</label>
+            <input type="text" id="prod-name" class="input-control" placeholder="e.g. yogi dress, cotton pant, silk saree" required>
+          </div>
+
+          <div class="input-group">
+            <label for="prod-name-te">Telugu Name (తెలుగులో పేరు)</label>
+            <input type="text" id="prod-name-te" class="input-control" placeholder="ఆటోమేటిక్‌గా తెలుగులోకి మారుతుంది">
+            <span class="hint-muted" style="font-size: 0.74rem;">(Auto-converts to Telugu, or type custom Telugu name)</span>
           </div>
 
           <div class="input-group">
@@ -370,6 +376,7 @@
   </div>
 
   <!-- JavaScript Modules -->
+  <script src="js/telugu-translit.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/products.js"></script>
   <script src="js/billing.js"></script>
