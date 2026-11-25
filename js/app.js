@@ -91,7 +91,7 @@
       // Re-render menu and bill to reflect changes
       if (window.ProductManager) window.ProductManager.renderMenu();
       if (window.BillingManager) {
-        window.BillingManager.renderBillTable();
+        window.BillingManager.renderBillList();
         window.BillingManager.updateCalculations();
         window.BillingManager.showToast('Shop settings updated!');
       }

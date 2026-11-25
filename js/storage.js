@@ -224,6 +224,25 @@
     },
 
     /**
+     * Update only the price of an existing product.
+     * @param {number|string} id 
+     * @param {number} newPrice 
+     * @returns {boolean}
+     */
+    updateProductPrice(id, newPrice) {
+      const numericId = parseInt(id, 10);
+      const price = parseFloat(newPrice);
+      if (isNaN(numericId) || isNaN(price) || price < 0) return false;
+
+      const products = this.getProducts();
+      const product = products.find(p => p.id === numericId);
+      if (!product) return false;
+
+      product.price = price;
+      return this.saveProducts(products);
+    },
+
+    /**
      * Allocates a guaranteed new unique Product ID that has never been used.
      * @returns {number}
      */

@@ -1,13 +1,11 @@
 /**
- * products.js - Product Catalog & Menu Management
+ * products.js - Mobile-First Product Catalog & Menu Management
  * 
- * Handles:
- * - Rendering product cards in a responsive, clean grid.
- * - Adding new products with auto-generated unique ID.
- * - Editing product name, price, and image.
- * - Deleting products with confirmation prompt.
- * - Image compression and preview for custom uploads.
- * - Immediate reactivity for billing lookup.
+ * Features:
+ * - Direct Tap-to-Add: Tapping any card/image instantly adds it to the bill counter.
+ * - Active Bill Badge: Cards display live count of units currently in the bill.
+ * - Simplified Edit Modal: Allows quickly editing the price or deleting the product without touching the name.
+ * - Add New Menu: Clean modal to add new items with auto-assigned non-reusable IDs.
  */
 
 (function (window) {
@@ -29,8 +27,7 @@
     },
 
     /**
-     * Subscribe to product updates.
-     * @param {Function} callback 
+     * Subscribe to product catalog changes.
      */
     subscribe(callback) {
       if (typeof callback === 'function') {
@@ -39,7 +36,7 @@
     },
 
     /**
-     * Notify all subscribers when products change.
+     * Notify subscribers.
      */
     notify() {
       const all = window.ShopStorage.getProducts();
@@ -55,7 +52,7 @@
     },
 
     /**
-     * Render the product menu grid.
+     * Render the product menu grid with mobile-friendly cards.
      */
     async renderMenu() {
       const container = document.getElementById('menu-grid');
@@ -82,35 +79,48 @@
       const settings = window.ShopStorage.getSettings();
       const currency = settings.currencySymbol || '₹';
 
+      // Get current quantities from billing manager to display active badges
+      const billItems = (window.BillingManager && window.BillingManager.items) || [];
+      const billQtyMap = {};
+      billItems.forEach(i => { billQtyMap[i.id] = i.quantity; });
+
       // Build cards with async image resolution
       const cardsHtml = await Promise.all(
         this.products.map(async (product) => {
           const imgSrc = await window.ShopStorage.resolveProductImage(product);
+          const inBillQty = billQtyMap[product.id] || 0;
+          const isSelected = inBillQty > 0;
+
           return `
-            <div class="product-card" data-id="${product.id}" tabindex="0" title="Click to add ${this.escapeHtml(product.name)} to bill">
-              <div class="card-badge">#${product.id}</div>
+            <div class="product-card ${isSelected ? 'in-bill' : ''}" data-id="${product.id}" tabindex="0" role="button" aria-label="Add ${this.escapeHtml(product.name)} to bill">
+              
+              <!-- Top bar: Product ID & in-bill count badge -->
+              <div class="card-top-row">
+                <span class="card-id-tag">#${product.id}</span>
+                <span class="card-cart-badge ${inBillQty > 0 ? 'visible' : ''}" id="badge-prod-${product.id}">
+                  ✓ ${inBillQty}
+                </span>
+                <button type="button" class="btn-card-edit" title="Edit price or delete" onclick="event.stopPropagation(); ProductManager.openPriceEditModal(${product.id});" aria-label="Edit price for ${this.escapeHtml(product.name)}">
+                  ✎
+                </button>
+              </div>
+
+              <!-- Product Image (Tapping adds to bill) -->
               <div class="card-image-wrap">
                 <img src="${imgSrc}" alt="${this.escapeHtml(product.name)}" loading="lazy" onerror="this.src='images/products/default.svg'">
               </div>
+
+              <!-- Product Details -->
               <div class="card-body">
                 <h3 class="product-title">${this.escapeHtml(product.name)}</h3>
                 <div class="product-price-row">
                   <span class="product-price">${currency}${parseFloat(product.price).toFixed(2)}</span>
-                  <span class="product-unit">/ unit</span>
                 </div>
               </div>
-              <div class="card-actions">
-                <button type="button" class="btn-card-action btn-add-bill" title="Add to current bill" onclick="event.stopPropagation(); ProductManager.quickAddToBill(${product.id});">
-                  <span class="icon">+</span> Add to Bill
-                </button>
-                <div class="btn-group-mini">
-                  <button type="button" class="btn-mini edit" title="Edit this item" onclick="event.stopPropagation(); ProductManager.openEditModal(${product.id});">
-                    ✎
-                  </button>
-                  <button type="button" class="btn-mini delete" title="Delete this item" onclick="event.stopPropagation(); ProductManager.confirmDelete(${product.id});">
-                    🗑
-                  </button>
-                </div>
+
+              <!-- Touch-friendly Add / Increment indicator -->
+              <div class="card-tap-cue">
+                <span class="tap-icon">+</span> Tap to Add
               </div>
             </div>
           `;
@@ -119,35 +129,151 @@
 
       container.innerHTML = cardsHtml.join('');
 
-      // Allow clicking entire card to trigger bill addition
+      // Add direct tap handler to cards
       container.querySelectorAll('.product-card').forEach(card => {
         card.addEventListener('click', () => {
           const id = parseInt(card.dataset.id, 10);
           if (id) {
-            ProductManager.quickAddToBill(id);
+            ProductManager.handleCardTap(card, id);
           }
         });
       });
     },
 
     /**
-     * Quick action to add this product to the current billing session.
+     * Handles tapping a card: visual tactile feedback & instant bill increment.
      */
-    quickAddToBill(productId) {
+    handleCardTap(cardEl, productId) {
+      // Tactile animation
+      cardEl.classList.remove('tap-pulse');
+      void cardEl.offsetWidth; // Trigger reflow
+      cardEl.classList.add('tap-pulse');
+
+      // Gentle haptic feedback on supported mobile devices
+      if (typeof navigator.vibrate === 'function') {
+        try { navigator.vibrate(25); } catch (e) {}
+      }
+
+      // Add directly to bill counter
       if (window.BillingManager) {
-        window.BillingManager.selectProductById(productId);
+        window.BillingManager.addOne(productId);
       }
     },
 
     /**
-     * Open modal to add a new product.
+     * Update active badges on menu cards without re-rendering whole grid.
+     */
+    syncBillBadges(billItems) {
+      const billQtyMap = {};
+      billItems.forEach(i => { billQtyMap[i.id] = i.quantity; });
+
+      this.products.forEach(p => {
+        const badge = document.getElementById(`badge-prod-${p.id}`);
+        const card = document.querySelector(`.product-card[data-id="${p.id}"]`);
+        const qty = billQtyMap[p.id] || 0;
+
+        if (badge) {
+          if (qty > 0) {
+            badge.textContent = `✓ ${qty}`;
+            badge.classList.add('visible');
+          } else {
+            badge.classList.remove('visible');
+          }
+        }
+
+        if (card) {
+          if (qty > 0) {
+            card.classList.add('in-bill');
+          } else {
+            card.classList.remove('in-bill');
+          }
+        }
+      });
+    },
+
+    /**
+     * SIMPLIFIED EDIT MODAL:
+     * Only displays product name & allows editing the PRICE or DELETING.
+     * No complicated name changes or image re-uploads!
+     */
+    openPriceEditModal(productId) {
+      const product = window.ShopStorage.getProductById(productId);
+      if (!product) return;
+
+      this.editingProductId = productId;
+
+      const modal = document.getElementById('price-edit-modal');
+      const nameDisplay = document.getElementById('price-edit-prod-name');
+      const idDisplay = document.getElementById('price-edit-prod-id');
+      const priceInput = document.getElementById('price-edit-input');
+
+      if (!modal) return;
+
+      if (nameDisplay) nameDisplay.textContent = product.name;
+      if (idDisplay) idDisplay.textContent = `#${product.id}`;
+      if (priceInput) {
+        priceInput.value = parseFloat(product.price).toFixed(2);
+      }
+
+      modal.classList.add('active');
+      if (priceInput) {
+        priceInput.focus();
+        priceInput.select();
+      }
+    },
+
+    /**
+     * Close the simplified price edit modal.
+     */
+    closePriceEditModal() {
+      const modal = document.getElementById('price-edit-modal');
+      if (modal) modal.classList.remove('active');
+      this.editingProductId = null;
+    },
+
+    /**
+     * Save updated price from simplified modal.
+     */
+    async savePriceEdit(event) {
+      if (event) event.preventDefault();
+      if (!this.editingProductId) return;
+
+      const priceInput = document.getElementById('price-edit-input');
+      const newPrice = parseFloat(priceInput.value);
+
+      if (isNaN(newPrice) || newPrice < 0) {
+        alert('Please enter a valid price (₹ 0 or greater).');
+        if (priceInput) priceInput.focus();
+        return;
+      }
+
+      window.ShopStorage.updateProductPrice(this.editingProductId, newPrice);
+      this.closePriceEditModal();
+      await this.renderMenu();
+      this.notify();
+
+      if (window.BillingManager) {
+        window.BillingManager.showToast('Product price updated!');
+      }
+    },
+
+    /**
+     * Delete product from simplified edit modal.
+     */
+    async deleteFromEditModal() {
+      if (!this.editingProductId) return;
+      const id = this.editingProductId;
+      this.closePriceEditModal();
+      await this.confirmDelete(id);
+    },
+
+    /**
+     * Open modal to add a brand new product to the menu.
      */
     openAddModal() {
-      this.editingProductId = null;
       this.pendingImageBase64 = null;
 
       const modal = document.getElementById('product-modal');
-      const title = document.getElementById('product-modal-title');
       const form = document.getElementById('product-form');
       const preview = document.getElementById('modal-image-preview');
       const nextIdSpan = document.getElementById('next-id-hint');
@@ -155,78 +281,37 @@
       if (!modal || !form) return;
 
       form.reset();
-      title.textContent = 'Add New Menu Item';
       preview.src = window.ShopStorage.DEFAULT_IMAGE;
-      
-      const peekId = window.ShopStorage.peekNextBillNumber ? 
+
+      const nextId = window.ShopStorage.peekNextBillNumber ? 
         (parseInt(localStorage.getItem('shop_billing_next_product_id'), 10) || 106) : 106;
       if (nextIdSpan) {
-        nextIdSpan.textContent = `Auto-assigned ID: #${peekId}`;
+        nextIdSpan.textContent = `Auto-assigned ID: #${nextId}`;
       }
 
       modal.classList.add('active');
-      document.getElementById('prod-name').focus();
-    },
-
-    /**
-     * Open modal to edit existing product.
-     */
-    async openEditModal(productId) {
-      const product = window.ShopStorage.getProductById(productId);
-      if (!product) {
-        alert('Product not found.');
-        return;
-      }
-
-      this.editingProductId = productId;
-      this.pendingImageBase64 = null;
-
-      const modal = document.getElementById('product-modal');
-      const title = document.getElementById('product-modal-title');
       const nameInput = document.getElementById('prod-name');
-      const priceInput = document.getElementById('prod-price');
-      const preview = document.getElementById('modal-image-preview');
-      const nextIdSpan = document.getElementById('next-id-hint');
-
-      title.textContent = `Edit Product #${product.id}`;
-      nameInput.value = product.name;
-      priceInput.value = parseFloat(product.price).toFixed(2);
-      if (nextIdSpan) {
-        nextIdSpan.textContent = `Product ID: #${product.id} (Permanent)`;
-      }
-
-      const currentImg = await window.ShopStorage.resolveProductImage(product);
-      preview.src = currentImg;
-
-      modal.classList.add('active');
-      nameInput.focus();
+      if (nameInput) nameInput.focus();
     },
 
     /**
-     * Close modal.
+     * Close the Add Product modal.
      */
     closeModal() {
       const modal = document.getElementById('product-modal');
       if (modal) modal.classList.remove('active');
-      this.editingProductId = null;
       this.pendingImageBase64 = null;
     },
 
     /**
-     * Handle image file selection & optimize it via canvas.
+     * Handle custom image file upload.
      */
     handleImageUpload(event) {
       const file = event.target.files && event.target.files[0];
       if (!file) return;
 
       if (!file.type.startsWith('image/')) {
-        alert('Please choose a valid image file (PNG, JPG, SVG, WebP).');
-        return;
-      }
-
-      // Max file size 5MB before downscaling
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Image file is too large (max 5MB).');
+        alert('Please choose a valid image (PNG, JPG, SVG, WebP).');
         return;
       }
 
@@ -234,32 +319,31 @@
       reader.onload = (e) => {
         const img = new Image();
         img.onload = () => {
-          // Scale image down to max 400x400 to keep it very fast and lightweight
-          const maxDim = 400;
-          let width = img.width;
-          let height = img.height;
-          if (width > maxDim || height > maxDim) {
-            if (width > height) {
-              height = Math.round((height * maxDim) / width);
-              width = maxDim;
+          // Scale to max 350x350 for fast mobile memory
+          const maxDim = 350;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
             } else {
-              width = Math.round((width * maxDim) / height);
-              height = maxDim;
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
             }
           }
 
           const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
+          canvas.width = w;
+          canvas.height = h;
           const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
+          ctx.drawImage(img, 0, 0, w, h);
 
-          // Use WebP/JPEG quality 0.85
-          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
-          this.pendingImageBase64 = compressedDataUrl;
+          const compressed = canvas.toDataURL('image/jpeg', 0.85);
+          this.pendingImageBase64 = compressed;
 
           const preview = document.getElementById('modal-image-preview');
-          if (preview) preview.src = compressedDataUrl;
+          if (preview) preview.src = compressed;
         };
         img.src = e.target.result;
       };
@@ -267,7 +351,7 @@
     },
 
     /**
-     * Save product from form (New or Edit).
+     * Save new product form.
      */
     async saveProductForm(event) {
       event.preventDefault();
@@ -278,7 +362,6 @@
       const name = nameInput.value.trim();
       const price = parseFloat(priceInput.value);
 
-      // Validation
       if (!name) {
         alert('Please enter a product name.');
         nameInput.focus();
@@ -286,66 +369,48 @@
       }
 
       if (isNaN(price) || price < 0) {
-        alert('Please enter a valid price (zero or greater).');
+        alert('Please enter a valid price.');
         priceInput.focus();
         return;
       }
 
       const products = window.ShopStorage.getProducts();
+      const newId = window.ShopStorage.getNextProductId();
 
-      if (this.editingProductId) {
-        // Edit existing product
-        const index = products.findIndex(p => p.id === this.editingProductId);
-        if (index === -1) {
-          alert('Error: Product no longer exists.');
-          return;
-        }
+      const newProduct = {
+        id: newId,
+        name: name,
+        price: price,
+        image: window.ShopStorage.DEFAULT_IMAGE,
+        customImageKey: null
+      };
 
-        const product = products[index];
-        product.name = name;
-        product.price = price;
-
-        if (this.pendingImageBase64) {
-          const key = await window.ShopStorage.saveProductImage(product.id, this.pendingImageBase64);
-          product.customImageKey = key;
-        }
-
-        products[index] = product;
-        window.ShopStorage.saveProducts(products);
-      } else {
-        // Add new product
-        const newId = window.ShopStorage.getNextProductId();
-        const newProduct = {
-          id: newId,
-          name: name,
-          price: price,
-          image: window.ShopStorage.DEFAULT_IMAGE,
-          customImageKey: null
-        };
-
-        if (this.pendingImageBase64) {
-          const key = await window.ShopStorage.saveProductImage(newId, this.pendingImageBase64);
-          newProduct.customImageKey = key;
-        }
-
-        products.push(newProduct);
-        window.ShopStorage.saveProducts(products);
+      if (this.pendingImageBase64) {
+        const key = await window.ShopStorage.saveProductImage(newId, this.pendingImageBase64);
+        newProduct.customImageKey = key;
       }
+
+      products.push(newProduct);
+      window.ShopStorage.saveProducts(products);
 
       this.closeModal();
       await this.renderMenu();
       this.notify();
+
+      if (window.BillingManager) {
+        window.BillingManager.showToast(`Product #${newId} "${name}" added to menu!`);
+      }
     },
 
     /**
-     * Delete product with explicit confirmation.
+     * Delete product with confirmation.
      */
     async confirmDelete(productId) {
       const product = window.ShopStorage.getProductById(productId);
       if (!product) return;
 
       const confirmed = window.confirm(
-        `Are you sure you want to delete Product #${product.id}: "${product.name}"?\n\nNote: Deleted product numbers are permanently retired and will never be reused.`
+        `Delete Product #${product.id} ("${product.name}")?\n\nThis product ID will be permanently retired and never reused.`
       );
 
       if (!confirmed) return;
@@ -354,44 +419,62 @@
       await window.ShopStorage.removeProductImage(product);
       window.ShopStorage.saveProducts(products);
 
+      // Also remove from current bill if present
+      if (window.BillingManager) {
+        window.BillingManager.removeItem(productId);
+      }
+
       await this.renderMenu();
       this.notify();
+
+      if (window.BillingManager) {
+        window.BillingManager.showToast(`Product #${product.id} deleted.`);
+      }
     },
 
     /**
      * Bind form listeners and shortcut keys.
      */
     bindUIEvents() {
+      // Add product form
       const form = document.getElementById('product-form');
       if (form) {
         form.addEventListener('submit', (e) => this.saveProductForm(e));
       }
 
+      // Simplified price edit form
+      const priceForm = document.getElementById('price-edit-form');
+      if (priceForm) {
+        priceForm.addEventListener('submit', (e) => this.savePriceEdit(e));
+      }
+
+      const priceCancelBtn = document.getElementById('price-edit-cancel-btn');
+      if (priceCancelBtn) {
+        priceCancelBtn.addEventListener('click', () => this.closePriceEditModal());
+      }
+
+      const priceDeleteBtn = document.getElementById('price-edit-delete-btn');
+      if (priceDeleteBtn) {
+        priceDeleteBtn.addEventListener('click', () => this.deleteFromEditModal());
+      }
+
+      // File upload
       const imageInput = document.getElementById('prod-image-file');
       if (imageInput) {
         imageInput.addEventListener('change', (e) => this.handleImageUpload(e));
       }
 
-      const cancelBtn = document.getElementById('modal-cancel-btn');
-      if (cancelBtn) {
-        cancelBtn.addEventListener('click', () => this.closeModal());
-      }
-
-      // Close modal on escape key or backdrop click
+      // Close modal on escape
       window.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') this.closeModal();
+        if (e.key === 'Escape') {
+          this.closeModal();
+          this.closePriceEditModal();
+        }
       });
-
-      const modal = document.getElementById('product-modal');
-      if (modal) {
-        modal.addEventListener('click', (e) => {
-          if (e.target === modal) this.closeModal();
-        });
-      }
     },
 
     /**
-     * Escape raw text for HTML injection safety.
+     * Escape raw text.
      */
     escapeHtml(str) {
       if (!str) return '';
