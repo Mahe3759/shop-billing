@@ -448,23 +448,26 @@
     },
 
     /**
-     * Sync with product catalog price/name updates.
+     * Sync with product catalog price/name/photo updates.
      */
-    handleProductCatalogChange() {
+    async handleProductCatalogChange() {
       const products = window.ShopStorage.getProducts();
       let changed = false;
 
-      this.items.forEach(item => {
+      for (const item of this.items) {
         const prod = products.find(p => p.id === item.id);
         if (prod) {
-          if (item.name !== prod.name || item.price !== prod.price) {
+          const newImg = await window.ShopStorage.resolveProductImage(prod);
+          if (item.name !== prod.name || item.price !== prod.price || item.image !== newImg) {
             item.name = prod.name;
+            item.nameTe = prod.nameTe || item.nameTe;
             item.price = parseFloat(prod.price);
             item.subtotal = item.quantity * item.price;
+            item.image = newImg;
             changed = true;
           }
         }
-      });
+      }
 
       if (changed) {
         this.renderBillList();

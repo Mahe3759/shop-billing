@@ -16,6 +16,7 @@
     listeners: [],
     editingProductId: null,
     pendingImageBase64: null,
+    pendingEditImageBase64: null,
 
     /**
      * Initialize product manager.
@@ -193,19 +194,21 @@
 
     /**
      * SIMPLIFIED EDIT MODAL:
-     * Only displays product name & allows editing the PRICE or DELETING.
-     * No complicated name changes or image re-uploads!
+     * Product name is fixed. Allows editing the PRICE, changing/replacing the PHOTO, or DELETING.
      */
-    openPriceEditModal(productId) {
+    async openPriceEditModal(productId) {
       const product = window.ShopStorage.getProductById(productId);
       if (!product) return;
 
       this.editingProductId = productId;
+      this.pendingEditImageBase64 = null;
 
       const modal = document.getElementById('price-edit-modal');
       const nameDisplay = document.getElementById('price-edit-prod-name');
       const idDisplay = document.getElementById('price-edit-prod-id');
       const priceInput = document.getElementById('price-edit-input');
+      const imgPreview = document.getElementById('price-edit-img-preview');
+      const imgInput = document.getElementById('price-edit-img-file');
 
       if (!modal) return;
 
@@ -213,6 +216,13 @@
       if (idDisplay) idDisplay.textContent = `#${product.id}`;
       if (priceInput) {
         priceInput.value = parseFloat(product.price).toFixed(2);
+      }
+      if (imgInput) {
+        imgInput.value = '';
+      }
+      if (imgPreview) {
+        const resolvedSrc = await window.ShopStorage.resolveProductImage(product);
+        imgPreview.src = resolvedSrc || window.ShopStorage.DEFAULT_IMAGE;
       }
 
       modal.classList.add('active');
@@ -223,16 +233,66 @@
     },
 
     /**
-     * Close the simplified price edit modal.
+     * Close the simplified price & photo edit modal.
      */
     closePriceEditModal() {
       const modal = document.getElementById('price-edit-modal');
       if (modal) modal.classList.remove('active');
       this.editingProductId = null;
+      this.pendingEditImageBase64 = null;
+      const imgInput = document.getElementById('price-edit-img-file');
+      if (imgInput) imgInput.value = '';
     },
 
     /**
-     * Save updated price from simplified modal.
+     * Handle custom photo replacement upload in edit modal.
+     */
+    handleEditImageUpload(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      if (!file.type.startsWith('image/')) {
+        alert('Please choose a valid image (PNG, JPG, SVG, WebP).');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          // Scale to max 350x350 for fast mobile memory
+          const maxDim = 350;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+
+          const compressed = canvas.toDataURL('image/jpeg', 0.85);
+          this.pendingEditImageBase64 = compressed;
+
+          const preview = document.getElementById('price-edit-img-preview');
+          if (preview) preview.src = compressed;
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    },
+
+    /**
+     * Save updated price & photo from edit modal (name remains strictly fixed).
      */
     async savePriceEdit(event) {
       if (event) event.preventDefault();
@@ -247,13 +307,25 @@
         return;
       }
 
-      window.ShopStorage.updateProductPrice(this.editingProductId, newPrice);
+      const products = window.ShopStorage.getProducts();
+      const product = products.find(p => p.id === this.editingProductId);
+      if (!product) return;
+
+      product.price = newPrice;
+
+      if (this.pendingEditImageBase64) {
+        const key = await window.ShopStorage.saveProductImage(product.id, this.pendingEditImageBase64);
+        product.customImageKey = key;
+      }
+
+      window.ShopStorage.saveProducts(products);
+
       this.closePriceEditModal();
       await this.renderMenu();
       this.notify();
 
       if (window.BillingManager) {
-        window.BillingManager.showToast('Product price updated!');
+        window.BillingManager.showToast('Product updated successfully!');
       }
     },
 
@@ -479,6 +551,12 @@
       const priceDeleteBtn = document.getElementById('price-edit-delete-btn');
       if (priceDeleteBtn) {
         priceDeleteBtn.addEventListener('click', () => this.deleteFromEditModal());
+      }
+
+      // Change photo in edit modal
+      const priceEditImgFile = document.getElementById('price-edit-img-file');
+      if (priceEditImgFile) {
+        priceEditImgFile.addEventListener('change', (e) => this.handleEditImageUpload(e));
       }
 
       // File upload
